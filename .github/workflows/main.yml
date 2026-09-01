@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   build:
+    name: Build Android App
     runs-on: ubuntu-latest
 
     steps:
@@ -23,80 +24,50 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle 8.7
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
 
-      - name: Create Android project
-        shell: bash
+      - name: Check Android Project
         run: |
-          mkdir -p app/src/main/java/com/gxdl/internetspeedcheck
-          mkdir -p app/src/main/res/drawable
-          mkdir -p app/src/main/res/values
+          echo "===== PROJECT FILES ====="
+          find . -maxdepth 4 -type f | sort
+          echo "========================="
 
-          cat > settings.gradle <<'EOF'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
 
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
+      - name: Clean Project
+        run: ./gradlew clean
 
-          rootProject.name = "Internet-Speed-Check"
-          include(":app")
-          EOF
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
 
-          cat > build.gradle <<'EOF'
-          plugins {
-              id 'com.android.application' version '8.6.1' apply false
-          }
-          EOF
+      - name: Build Release AAB
+        run: ./gradlew bundleRelease
 
-          cat > gradle.properties <<'EOF'
-          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-          android.useAndroidX=true
-          android.nonTransitiveRClass=true
-          EOF
+      - name: Show Build Files
+        run: |
+          echo "===== APK ====="
+          find . -type f -name "*.apk" -print
 
-          cat > app/build.gradle <<'EOF'
-          plugins {
-              id 'com.android.application'
-          }
+          echo "===== AAB ====="
+          find . -type f -name "*.aab" -print
 
-          android {
-              namespace 'com.gxdl.internetspeedcheck'
-              compileSdk 35
+      - name: Upload APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: Internet-Speed-Check-APK
+          path: |
+            **/build/outputs/apk/release/*.apk
+          if-no-files-found: error
 
-              defaultConfig {
-                  applicationId 'com.gxdl.internetspeedcheck'
-                  minSdk 23
-                  targetSdk 35
-                  versionCode 1
-                  versionName '1.0'
-              }
-
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                      shrinkResources false
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
-                              'proguard-rules.pro'
-                  }
-              }
-          }
-
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.7.1'
+      - name: Upload AAB
+        uses: actions/upload-artifact@v6
+        with:
+          name: Internet-Speed-Check-AAB
+          path: |
+            **/build/outputs/bundle/release/*.aab
+          if-no-files-found: error              implementation 'androidx.appcompat:appcompat:1.7.1'
               implementation 'com.google.android.material:material:1.13.0'
               implementation 'androidx.activity:activity:1.10.1'
               implementation 'androidx.core:core-ktx:1.16.0'
